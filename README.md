@@ -419,5 +419,5 @@ This is a production-ready foundation. Extend it with:
 
 ## Credits
 
-Built by ML Innovations
+Built by ML aka ZodiacDog
 Physics algorithms based on industry-standard methods: Sequential Impulse, SAT, Spatial Hashing
