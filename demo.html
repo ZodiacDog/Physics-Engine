@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics Engine Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0f0f1e;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00d4ff;
+      margin-bottom: 20px;
+      font-size: 2em;
+      text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    }
+
+    .demo-wrapper {
+      background: #1a1a2e;
+      border: 2px solid #00d4ff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      background: #16213e;
+      border-radius: 5px;
+      cursor: crosshair;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .control-group {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #2a3f5f;
+    }
+
+    .control-group h3 {
+      color: #00d4ff;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      text-transform: uppercase;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      transition: all 0.3s;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.active {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stats {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #2a3f5f;
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      color: #888;
+      font-size: 0.8em;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      color: #00d4ff;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+
+    .instructions {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #2a3f5f;
+      margin-top: 15px;
+    }
+
+    .instructions h3 {
+      color: #00d4ff;
+      margin-bottom: 10px;
+    }
+
+    .instructions ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .instructions li {
+      padding: 5px 0;
+      color: #aaa;
+    }
+
+    .instructions li::before {
+      content: "▸ ";
+      color: #00d4ff;
+      font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.5em;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚛️ Advanced Physics Engine Demo</h1>
+    
+    <div class="demo-wrapper">
+      <canvas id="gameCanvas" width="800" height="600"></canvas>
+      
+      <div class="controls">
+        <div class="control-group">
+          <h3>Spawn Objects</h3>
+          <button id="spawnBox">Add Box</button>
+          <button id="spawnCircle">Add Circle</button>
+          <button id="spawnHeavy">Add Heavy Object</button>
+          <button id="createTower">Build Tower</button>
+        </div>
+        
+        <div class="control-group">
+          <h3>Interactions</h3>
+          <button id="explosion">Create Explosion</button>
+          <button id="gravity">Toggle Gravity</button>
+          <button id="sleeping">Toggle Sleeping</button>
+          <button id="reset">Reset Scene</button>
+        </div>
+        
+        <div class="control-group">
+          <h3>Demos</h3>
+          <button id="demoNewton">Newton's Cradle</button>
+          <button id="demoDomino">Domino Chain</button>
+          <button id="demoBridge">Build Bridge</button>
+          <button id="demoPool">Pool Table</button>
+        </div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Bodies</span>
+          <span class="stat-value" id="statBodies">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Contacts</span>
+          <span class="stat-value" id="statContacts">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Sleeping</span>
+          <span class="stat-value" id="statSleeping">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">FPS</span>
+          <span class="stat-value" id="statFPS">60</span>
+        </div>
+      </div>
+      
+      <div class="instructions">
+        <h3>Instructions</h3>
+        <ul>
+          <li>Click anywhere to spawn a random object</li>
+          <li>Right-click to create an explosion</li>
+          <li>Use buttons to spawn specific objects or run demos</li>
+          <li>Watch objects sleep when they settle (gray color)</li>
+          <li>Experiment with gravity and sleeping states</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="PhysicsEngine.js"></script>
+  <script>
+    class PhysicsDemo {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.setupWorld();
+        this.setupUI();
+        this.setupInput();
+        
+        this.lastTime = 0;
+        this.fpsBuffer = [];
+        
+        this.run();
+      }
+
+      setupWorld() {
+        this.world = new PhysicsWorld({
+          gravity: new Vec2(0, 400),
+          iterations: 10,
+          cellSize: 80,
+          enableSleeping: true
+        });
+
+        // Ground
+        const ground = new RigidBody({
+          position: new Vec2(400, 580),
+          isStatic: true,
+          shape: new BoxShape(800, 40),
+          restitution: 0.3,
+          friction: 0.6
+        });
+        this.world.addBody(ground);
+
+        // Left wall
+        const leftWall = new RigidBody({
+          position: new Vec2(10, 300),
+          isStatic: true,
+          shape: new BoxShape(20, 600),
+          restitution: 0.3,
+          friction: 0.5
+        });
+        this.world.addBody(leftWall);
+
+        // Right wall
+        const rightWall = new RigidBody({
+          position: new Vec2(790, 300),
+          isStatic: true,
+          shape: new BoxShape(20, 600),
+          restitution: 0.3,
+          friction: 0.5
+        });
+        this.world.addBody(rightWall);
+
+        // Create initial scene
+        this.createInitialScene();
+      }
+
+      createInitialScene() {
+        // Create a pyramid
+        const boxSize = 40;
+        const layers = 5;
+        const startX = 400;
+        const startY = 450;
+
+        for (let layer = 0; layer < layers; layer++) {
+          const boxesInLayer = layers - layer;
+          for (let i = 0; i < boxesInLayer; i++) {
+            const x = startX - (boxesInLayer - 1) * boxSize / 2 + i * boxSize;
+            const y = startY - layer * boxSize;
+            
+            this.spawnBox(x, y, boxSize * 0.9, boxSize * 0.9);
+          }
+        }
+      }
+
+      setupUI() {
+        document.getElementById('spawnBox').addEventListener('click', () => {
+          this.spawnBox(400, 50, 50, 50);
+        });
+
+        document.getElementById('spawnCircle').addEventListener('click', () => {
+          this.spawnCircle(400, 50, 25);
+        });
+
+        document.getElementById('spawnHeavy').addEventListener('click', () => {
+          const body = this.spawnBox(400, 50, 60, 60);
+          body.mass = 10;
+          body.inverseMass = 0.1;
+        });
+
+        document.getElementById('createTower').addEventListener('click', () => {
+          this.createTower(400, 500, 8);
+        });
+
+        document.getElementById('explosion').addEventListener('click', () => {
+          this.createExplosion(new Vec2(400, 300), 200, 5000);
+        });
+
+        document.getElementById('gravity').addEventListener('click', (e) => {
+          if (this.world.gravity.y > 0) {
+            this.world.gravity = new Vec2(0, 0);
+            e.target.classList.add('active');
+          } else {
+            this.world.gravity = new Vec2(0, 400);
+            e.target.classList.remove('active');
+          }
+        });
+
+        document.getElementById('sleeping').addEventListener('click', (e) => {
+          this.world.enableSleeping = !this.world.enableSleeping;
+          e.target.classList.toggle('active');
+          // Wake all bodies
+          this.world.bodies.forEach(b => b.wakeUp());
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+          this.world.bodies = [];
+          this.setupWorld();
+        });
+
+        document.getElementById('demoNewton').addEventListener('click', () => {
+          this.world.bodies = [];
+          this.setupWorld();
+          this.createNewtonsCradle(400, 200);
+        });
+
+        document.getElementById('demoDomino').addEventListener('click', () => {
+          this.world.bodies = [];
+          this.setupWorld();
+          this.createDominoChain(100, 500, 15);
+        });
+
+        document.getElementById('demoBridge').addEventListener('click', () => {
+          this.world.bodies = [];
+          this.setupWorld();
+          this.createBridge(200, 300, 10);
+        });
+
+        document.getElementById('demoPool').addEventListener('click', () => {
+          this.world.bodies = [];
+          this.setupWorld();
+          this.createPoolTable();
+        });
+      }
+
+      setupInput() {
+        this.canvas.addEventListener('click', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+          const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+
+          if (Math.random() > 0.5) {
+            this.spawnBox(x, y, 40 + Math.random() * 30, 40 + Math.random() * 30);
+          } else {
+            this.spawnCircle(x, y, 15 + Math.random() * 20);
+          }
+        });
+
+        this.canvas.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          const rect = this.canvas.getBoundingClientRect();
+          const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+          const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+          
+          this.createExplosion(new Vec2(x, y), 150, 3000);
+        });
+      }
+
+      spawnBox(x, y, width, height) {
+        const body = new RigidBody({
+          position: new Vec2(x, y),
+          rotation: Math.random() * 0.5 - 0.25,
+          mass: 1,
+          inertia: 1,
+          shape: new BoxShape(width, height),
+          restitution: 0.3,
+          friction: 0.5
+        });
+        this.world.addBody(body);
+        return body;
+      }
+
+      spawnCircle(x, y, radius) {
+        const body = new RigidBody({
+          position: new Vec2(x, y),
+          mass: 1,
+          inertia: 1,
+          shape: new CircleShape(radius),
+          restitution: 0.6,
+          friction: 0.3
+        });
+        this.world.addBody(body);
+        return body;
+      }
+
+      createTower(x, y, height) {
+        for (let i = 0; i < height; i++) {
+          this.spawnBox(x, y - i * 50, 45, 45);
+        }
+      }
+
+      createExplosion(center, radius, force) {
+        const bodies = this.world.query(center, radius);
+        
+        for (const body of bodies) {
+          if (body.isStatic) continue;
+          
+          const dir = body.position.sub(center);
+          const dist = dir.length();
+          
+          if (dist > 0 && dist < radius) {
+            const normalizedDir = dir.normalize();
+            const falloff = 1 - (dist / radius);
+            const impulse = normalizedDir.scale(force * falloff);
+            
+            body.applyImpulse(impulse, body.position);
+            body.wakeUp();
+          }
+        }
+      }
+
+      createNewtonsCradle(x, y) {
+        const balls = 5;
+        const radius = 20;
+        const spacing = radius * 2.5;
+
+        for (let i = 0; i < balls; i++) {
+          const ball = this.spawnCircle(x + (i - balls/2) * spacing, y, radius);
+          ball.restitution = 1.0;
+          ball.friction = 0;
+          ball.linearDamping = 1.0;
+        }
+
+        // Nudge first ball
+        setTimeout(() => {
+          this.world.bodies[3].velocity = new Vec2(300, 0);
+        }, 500);
+      }
+
+      createDominoChain(x, y, count) {
+        const width = 15;
+        const height = 60;
+        const spacing = 40;
+
+        for (let i = 0; i < count; i++) {
+          this.spawnBox(x + i * spacing, y, width, height);
+        }
+
+        // Tip first domino
+        setTimeout(() => {
+          this.world.bodies[3].angularVelocity = 5;
+        }, 500);
+      }
+
+      createBridge(x, y, segments) {
+        const segmentWidth = 50;
+        const segmentHeight = 15;
+
+        for (let i = 0; i < segments; i++) {
+          this.spawnBox(x + i * segmentWidth, y, segmentWidth, segmentHeight);
+        }
+      }
+
+      createPoolTable() {
+        // Rack balls in triangle
+        const radius = 15;
+        const startX = 500;
+        const startY = 300;
+        const spacing = radius * 2.1;
+
+        let row = 0;
+        let col = 0;
+        for (let i = 0; i < 15; i++) {
+          const x = startX + row * spacing * 0.866;
+          const y = startY + (col - row / 2) * spacing;
+          
+          const ball = this.spawnCircle(x, y, radius);
+          ball.restitution = 0.95;
+          ball.friction = 0.2;
+          ball.linearDamping = 0.98;
+          
+          col++;
+          if (col > row) {
+            row++;
+            col = 0;
+          }
+        }
+
+        // Cue ball
+        const cue = this.spawnCircle(200, 300, radius);
+        cue.restitution = 0.95;
+        cue.friction = 0.2;
+        cue.linearDamping = 0.98;
+        
+        // Launch cue ball
+        setTimeout(() => {
+          cue.velocity = new Vec2(600, 0);
+        }, 500);
+      }
+
+      update(dt) {
+        this.world.step(dt);
+        
+        // Update FPS
+        this.fpsBuffer.push(1 / dt);
+        if (this.fpsBuffer.length > 30) {
+          this.fpsBuffer.shift();
+        }
+        const avgFps = this.fpsBuffer.reduce((a, b) => a + b, 0) / this.fpsBuffer.length;
+        
+        // Update stats
+        document.getElementById('statBodies').textContent = this.world.bodies.length;
+        document.getElementById('statContacts').textContent = this.world.contacts.length;
+        document.getElementById('statSleeping').textContent = 
+          this.world.bodies.filter(b => b.isSleeping).length;
+        document.getElementById('statFPS').textContent = Math.round(avgFps);
+      }
+
+      render() {
+        const ctx = this.ctx;
+
+        // Clear
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < this.canvas.width; x += 50) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, this.canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < this.canvas.height; y += 50) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(this.canvas.width, y);
+          ctx.stroke();
+        }
+
+        // Draw bodies
+        for (const body of this.world.bodies) {
+          if (!body.shape) continue;
+
+          ctx.save();
+          ctx.translate(body.position.x, body.position.y);
+          ctx.rotate(body.rotation);
+
+          const sleeping = body.isSleeping;
+          const isStatic = body.isStatic;
+
+          if (body.shape.type === 'circle') {
+            ctx.beginPath();
+            ctx.arc(0, 0, body.shape.radius, 0, Math.PI * 2);
+            
+            if (isStatic) {
+              ctx.fillStyle = '#2a3f5f';
+            } else if (sleeping) {
+              ctx.fillStyle = '#4a5568';
+            } else {
+              ctx.fillStyle = '#00d4ff';
+            }
+            
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Rotation indicator
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(body.shape.radius, 0);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.stroke();
+          } else if (body.shape.type === 'box') {
+            if (isStatic) {
+              ctx.fillStyle = '#2a3f5f';
+            } else if (sleeping) {
+              ctx.fillStyle = '#4a5568';
+            } else {
+              ctx.fillStyle = '#f0a500';
+            }
+            
+            ctx.fillRect(
+              -body.shape.halfWidth,
+              -body.shape.halfHeight,
+              body.shape.width,
+              body.shape.height
+            );
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              -body.shape.halfWidth,
+              -body.shape.halfHeight,
+              body.shape.width,
+              body.shape.height
+            );
+          }
+
+          ctx.restore();
+        }
+
+        // Draw contact points
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.6)';
+        for (const manifold of this.world.contacts) {
+          for (const contact of manifold.contacts) {
+            ctx.beginPath();
+            ctx.arc(contact.x, contact.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      run(currentTime = 0) {
+        const dt = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+        this.lastTime = currentTime;
+
+        if (dt > 0) {
+          this.update(dt);
+        }
+        this.render();
+
+        requestAnimationFrame((time) => this.run(time));
+      }
+    }
+
+    // Start demo when page loads
+    window.addEventListener('load', () => {
+      new PhysicsDemo();
+    });
+  </script>
+</body>
+</html>
